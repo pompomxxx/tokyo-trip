@@ -1117,7 +1117,11 @@ function addEvent(tl, btn){
 }
 
 /* ── Token ── */
-function resetToken(){ localStorage.removeItem('gh_token'); alert('Token 已清除。'); }
+function resetToken(){
+  const t=prompt('請輸入新的 GitHub Token（需 repo 權限）：', '');
+  if(t && t.trim()){ localStorage.setItem('gh_token', t.trim()); alert('Token 已更新，可以按「同步到網站」了。'); }
+  else { localStorage.removeItem('gh_token'); alert('Token 已清除，下次同步時會要求重新輸入。'); }
+}
 
 /* ── Sync to GitHub Pages repo ── */
 function utf8ToBase64(str){
