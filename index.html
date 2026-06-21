@@ -930,6 +930,7 @@ TEL：03-6226-5131<br>
 </div><!-- /plan-check -->
 
 <!-- Edit Mode FAB -->
+<div id="sync-status" onclick="this.style.display='none'" style="display:none;position:fixed;left:12px;right:12px;bottom:12px;z-index:10000;padding:12px 14px;border-radius:10px;color:#fff;font-size:14px;font-weight:700;line-height:1.5;box-shadow:0 4px 16px rgba(0,0,0,.25);text-align:center;"></div>
 <div class="edit-fab">
   <button id="btn-token-reset" onclick="resetToken()">🔑 更換 Token</button>
   <button id="btn-sync" onclick="syncToGist()">☁️ 同步到網站</button>
@@ -1149,26 +1150,35 @@ async function syncToGist(){
   const html='<!DOCTYPE html>\n'+clone.outerHTML;
 
   const syncBtn=document.getElementById('btn-sync');
+  const status=document.getElementById('sync-status');
+  const show=(msg,bg)=>{ status.textContent=msg; status.style.background=bg; status.style.display='block'; };
   syncBtn.textContent='⏳ 同步中…'; syncBtn.disabled=true;
+  show('⏳ 同步中…','#777');
   const apiBase=`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${REPO_PATH}`;
   const headers={'Authorization':`token ${token}`,'Accept':'application/vnd.github.v3+json'};
   try{
     const getRes=await fetch(apiBase+'?ref=main&t='+Date.now(),{headers,cache:'no-store'});
-    if(getRes.status===401){ localStorage.removeItem('gh_token'); syncBtn.textContent='❌ Token 無效'; alert('❌ Token 無效或沒有 repo 權限，已清除。\n請按「更換 Token」貼上正確的 token（注意前後不要有空格）。'); }
-    else if(!getRes.ok){ syncBtn.textContent='❌ 讀取失敗('+getRes.status+')'; alert('❌ 讀取目前檔案失敗，錯誤代碼：'+getRes.status+'\n請把這個代碼回報。'); }
+    if(getRes.status===401){ localStorage.removeItem('gh_token'); show('❌ Token 無效或沒有 repo 權限，已清除。請按「更換 Token」重新貼上（注意前後不要有空格）。','#c0392b'); }
+    else if(!getRes.ok){ show('❌ 讀取失敗，錯誤代碼：'+getRes.status+'（請回報此代碼）','#c0392b'); }
     else{
       const cur=await getRes.json();
-      const putRes=await fetch(apiBase,{
-        method:'PUT',
-        headers:{...headers,'Content-Type':'application/json'},
-        body:JSON.stringify({message:'Update itinerary',content:utf8ToBase64(html),sha:cur.sha,branch:'main'})
-      });
-      if(putRes.ok){ syncBtn.textContent='✅ 已同步！'; alert('✅ 已同步成功！\n網站約 1 分鐘後更新，重整即可看到最新版。'); }
-      else if(putRes.status===401){ localStorage.removeItem('gh_token'); syncBtn.textContent='❌ Token 無效'; alert('❌ Token 無效或沒有 repo 權限，已清除。\n請按「更換 Token」貼上正確的 token。'); }
-      else { const txt=await putRes.text(); syncBtn.textContent='❌ 失敗('+putRes.status+')'; alert('❌ 同步失敗，錯誤代碼：'+putRes.status+'\n'+txt.slice(0,200)); }
+      let curHtml='';
+      try{ curHtml=new TextDecoder().decode(Uint8Array.from(atob(cur.content.replace(/\s/g,'')),c=>c.charCodeAt(0))); }catch(e){}
+      if(curHtml===html){
+        show('⚠️ 沒有偵測到任何修改！你的編輯沒有生效。請「直接點在行程的時間／標題／說明文字上」或清單項目來改（日期大標題不能改）。','#e67e22');
+      }else{
+        const putRes=await fetch(apiBase,{
+          method:'PUT',
+          headers:{...headers,'Content-Type':'application/json'},
+          body:JSON.stringify({message:'Update itinerary',content:utf8ToBase64(html),sha:cur.sha,branch:'main'})
+        });
+        if(putRes.ok){ show('✅ 已同步成功！網站約 1 分鐘後更新，重整即可看到。','#27ae60'); }
+        else if(putRes.status===401){ localStorage.removeItem('gh_token'); show('❌ Token 無效，已清除，請重新輸入。','#c0392b'); }
+        else { const txt=await putRes.text(); show('❌ 同步失敗，錯誤代碼：'+putRes.status+'（請回報）','#c0392b'); }
+      }
     }
-  }catch(e){ syncBtn.textContent='❌ 網路錯誤'; alert('❌ 網路錯誤：'+e.message); }
-  setTimeout(()=>{ syncBtn.textContent='☁️ 同步到網站'; syncBtn.disabled=false; },3000);
+  }catch(e){ show('❌ 網路錯誤：'+e.message,'#c0392b'); }
+  syncBtn.textContent='☁️ 同步到網站'; syncBtn.disabled=false;
   if(wasEditing) enableEdit();
 }
 </script>
