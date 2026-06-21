@@ -251,7 +251,7 @@ body.editing .cl-item input[type=checkbox]{pointer-events:none;opacity:.5;}
 <h1>東京・輕井澤之旅<span class="jp">六月底 ｜ 與 Barney</span></h1>
 <div class="dates">6/25 (四) — 7/3 (五)</div>
 <div class="seal">機械要素展 7/1–7/2</div>
-<div style="text-align:center;font-size:11px;color:#9a9a9a;margin-top:6px;">頁面版本 <b>v.0621-1500</b>（編輯前確認這是最新版）</div>
+<div style="text-align:center;font-size:11px;color:#9a9a9a;margin-top:6px;">頁面版本 <b>v.0621-1530</b>（編輯前確認這是最新版）</div>
 </header>
 
 <div class="sticky-nav">
@@ -933,6 +933,10 @@ TEL：03-6226-5131<br>
 <!-- Edit Mode FAB -->
 <div id="sync-status" onclick="this.style.display='none'" style="display:none;position:fixed;left:12px;right:12px;bottom:12px;z-index:10000;padding:12px 14px;border-radius:10px;color:#fff;font-size:14px;font-weight:700;line-height:1.5;box-shadow:0 4px 16px rgba(0,0,0,.25);text-align:center;"></div>
 <div class="edit-fab">
+  <div id="token-row" style="display:none;align-items:center;gap:6px;background:#fff;padding:7px 8px;border-radius:10px;box-shadow:0 3px 12px rgba(0,0,0,.2);">
+    <input id="token-input" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="貼上 GitHub token" style="width:170px;border:1px solid #ccc;border-radius:7px;padding:6px 8px;font-size:13px;">
+    <button onclick="saveTokenFromInput()" style="border:none;border-radius:7px;padding:6px 10px;background:#27ae60;color:#fff;font-size:14px;">💾</button>
+  </div>
   <button id="btn-token-reset" onclick="resetToken()">🔑 更換 Token</button>
   <button id="btn-sync" onclick="syncToGist()">☁️ 同步到網站</button>
   <button id="btn-edit-toggle" onclick="toggleEdit()">✏️ 編輯行程</button>
@@ -1122,10 +1126,22 @@ function addEvent(tl, btn){
 }
 
 /* ── Token ── */
+function statusShow(msg,bg){ const s=document.getElementById('sync-status'); s.textContent=msg; s.style.background=bg; s.style.display='block'; }
 function resetToken(){
-  const t=prompt('請輸入新的 GitHub Token（需 repo 權限）：', '');
-  if(t && t.trim()){ localStorage.setItem('gh_token', t.trim()); alert('Token 已更新，可以按「同步到網站」了。'); }
-  else { localStorage.removeItem('gh_token'); alert('Token 已清除，下次同步時會要求重新輸入。'); }
+  const row=document.getElementById('token-row');
+  row.style.display='flex';
+  const inp=document.getElementById('token-input');
+  inp.value=''; inp.focus();
+  statusShow('🔑 請在右下角欄位貼上 token，再按 💾 儲存','#e67e22');
+}
+function saveTokenFromInput(){
+  const inp=document.getElementById('token-input');
+  const v=(inp.value||'').trim();
+  if(!v){ statusShow('⚠️ 欄位是空的，請先貼上 token','#e67e22'); return; }
+  localStorage.setItem('gh_token',v);
+  inp.value='';
+  document.getElementById('token-row').style.display='none';
+  statusShow('✅ Token 已儲存！現在按「☁️ 同步到網站」即可','#27ae60');
 }
 
 /* ── Sync to GitHub Pages repo ── */
@@ -1135,11 +1151,13 @@ function utf8ToBase64(str){
   return btoa(bin);
 }
 async function syncToGist(){
+  statusShow('⏳ 準備同步…','#777');
   let token=localStorage.getItem('gh_token');
   if(!token){
-    token=prompt('請輸入 GitHub Personal Access Token（需 repo 權限，只需一次，存在本機）：');
-    if(!token) return;
-    localStorage.setItem('gh_token',token);
+    document.getElementById('token-row').style.display='flex';
+    document.getElementById('token-input').focus();
+    statusShow('🔑 還沒設定 token：請在右下角欄位貼上 token、按 💾 儲存，再按同步','#e67e22');
+    return;
   }
   const wasEditing=isEditing;
   if(wasEditing) disableEdit();
