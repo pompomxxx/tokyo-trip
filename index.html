@@ -102,6 +102,13 @@ h1 .jp{display:block;font-size:14px;font-weight:600;color:var(--ink-soft);letter
 .decision-box .db-col li b{color:inherit;}
 .decision-box .db-done{margin-top:12px;padding:8px 11px;background:#e8f3ed;border-radius:9px;color:#2f6b48;line-height:1.55;}
 .decision-box .db-common{margin-top:7px;padding:8px 11px;background:var(--paper-2);border-radius:9px;color:#666;line-height:1.55;}
+.weather-strip{display:flex;flex-wrap:wrap;align-items:center;gap:5px 11px;margin:11px 16px 2px;padding:8px 13px;background:linear-gradient(90deg,#eef4fb,#f4f0fa);border:1px solid #e2e7f1;border-radius:11px;font-size:12.5px;}
+.weather-strip .wx-loc{font-weight:800;color:var(--navy);}
+.weather-strip .wx-ico{font-size:16px;}
+.weather-strip .wx-temp{font-weight:700;color:var(--ink);}
+.weather-strip .wx-rain{color:#2a72c0;font-weight:700;}
+.weather-strip .wx-tip{color:#a8431c;font-weight:800;margin-left:auto;}
+@media(max-width:480px){.weather-strip .wx-tip{margin-left:0;width:100%;margin-top:1px;}}
 .day{background:var(--paper-2);border:1px solid var(--line);border-radius:18px;margin:14px 0;box-shadow:var(--shadow);overflow:hidden;scroll-margin-top:120px;}
 .day:target{box-shadow:0 0 0 2px var(--vermil),var(--shadow);}
 .day-head{padding:15px 18px 13px;border-bottom:1px dashed var(--line);display:flex;align-items:flex-start;gap:13px;background:linear-gradient(180deg,#fffdf8,transparent);}
@@ -251,7 +258,7 @@ body.editing .cl-item input[type=checkbox]{pointer-events:none;opacity:.5;}
 <h1>東京・輕井澤之旅<span class="jp">六月底 ｜ 與 Barney</span></h1>
 <div class="dates">6/25 (四) — 7/3 (五)</div>
 <div class="seal">機械要素展 7/1–7/2</div>
-<div style="text-align:center;font-size:11px;color:#9a9a9a;margin-top:6px;">頁面版本 <b>v.0622-1730</b>（編輯前確認這是最新版）</div>
+<div style="text-align:center;font-size:11px;color:#9a9a9a;margin-top:6px;">頁面版本 <b>v.0622-1830</b>（編輯前確認這是最新版）</div>
 </header>
 
 <div class="sticky-nav">
@@ -787,7 +794,7 @@ async function syncToGist(){
     wasEditing=isEditing;
     if(wasEditing) disableEdit();
     const clone=document.documentElement.cloneNode(true);
-    clone.querySelectorAll('.edit-fab,#sync-status,.drag-handle,.del-ev,.add-ev-btn,.del-item,.add-item-row,.add-cat-btn').forEach(el=>el.remove());
+    clone.querySelectorAll('.edit-fab,#sync-status,.weather-strip,.drag-handle,.del-ev,.add-ev-btn,.del-item,.add-item-row,.add-cat-btn').forEach(el=>el.remove());
     clone.querySelectorAll('[contenteditable]').forEach(el=>el.removeAttribute('contenteditable'));
     const cbody=clone.querySelector('body'); if(cbody) cbody.classList.remove('editing');
     const html='<!DOCTYPE html>\n'+clone.outerHTML;
@@ -819,6 +826,48 @@ async function syncToGist(){
   syncBtn.textContent='☁️ 同步到網站'; syncBtn.disabled=false;
   if(wasEditing) enableEdit();
 }
+
+/* ── 天氣（Open-Meteo，每次開頁自動更新）── */
+const WX_LOCS={tokyo:[35.68,139.76],yokohama:[35.45,139.64],tama:[35.62,139.42],karuizawa:[36.35,138.63]};
+const WX_DAYS=[
+  {id:'b-625',date:'2026-06-25',loc:'tokyo',name:'東京'},
+  {id:'b-626',date:'2026-06-26',loc:'yokohama',name:'横浜'},
+  {id:'b-627',date:'2026-06-27',loc:'tama',name:'多摩·三麗鷗'},
+  {id:'b-628',date:'2026-06-28',loc:'karuizawa',name:'輕井澤'},
+  {id:'b-629',date:'2026-06-29',loc:'karuizawa',name:'輕井澤'},
+  {id:'b-630',date:'2026-06-30',loc:'tokyo',name:'東京'},
+  {id:'b-71',date:'2026-07-01',loc:'tokyo',name:'東京'},
+  {id:'b-72',date:'2026-07-02',loc:'tokyo',name:'東京'},
+  {id:'b-73',date:'2026-07-03',loc:'tokyo',name:'東京'}
+];
+function wxIcon(c){ if(c===0)return['☀️','晴']; if(c<=2)return['🌤️','晴時多雲']; if(c===3)return['☁️','陰']; if(c<=48)return['🌫️','霧']; if(c<=57)return['🌦️','毛毛雨']; if(c<=67)return['🌧️','雨']; if(c<=77)return['🌨️','雪']; if(c<=82)return['🌧️','陣雨']; if(c<=86)return['🌨️','陣雪']; return['⛈️','雷雨']; }
+function wxDayEl(id){ const e=document.getElementById(id); if(!e)return null; return e.classList.contains('day')?e:e.querySelector('.day'); }
+function wxStrip(d){
+  const ic=wxIcon(d.code), mx=Math.round(d.tmax), mn=Math.round(d.tmin);
+  let umb; if(d.rain>=50||(d.code>=51&&d.code<=99)) umb='🌂 一定帶傘'; else if(d.rain>=25) umb='☂️ 備折傘'; else umb='✅ 免帶傘';
+  let cloth; if(mx>=30) cloth='🥵 短袖·防曬'; else if(mx>=27) cloth='👕 短袖'; else if(mx>=23) cloth='👕 短袖/薄長袖'; else if(mx>=19) cloth='🧥 薄外套'; else cloth='🧥 外套(偏涼)';
+  if(mn<=16) cloth+='·早晚涼';
+  return `<div class="weather-strip"><span class="wx-loc">📍${d.name}</span><span class="wx-ico">${ic[0]}</span><span>${ic[1]}</span><span class="wx-temp">${mn}°~${mx}°</span><span class="wx-rain">☔${d.rain==null?'-':d.rain+'%'}</span><span class="wx-tip">${umb}・${cloth}</span></div>`;
+}
+async function loadWeather(){
+  try{
+    const locs=[...new Set(WX_DAYS.map(d=>d.loc))], data={};
+    await Promise.all(locs.map(async loc=>{
+      const [la,lo]=WX_LOCS[loc];
+      const u=`https://api.open-meteo.com/v1/forecast?latitude=${la}&longitude=${lo}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia%2FTokyo&start_date=2026-06-25&end_date=2026-07-03`;
+      const r=await fetch(u); data[loc]=await r.json();
+    }));
+    WX_DAYS.forEach(day=>{
+      const dEl=wxDayEl(day.id); if(!dEl)return;
+      const head=dEl.querySelector('.day-head'); if(!head)return;
+      const dd=data[day.loc]; if(!dd||!dd.daily)return;
+      const i=dd.daily.time.indexOf(day.date); if(i<0)return;
+      dEl.querySelectorAll('.weather-strip').forEach(x=>x.remove());
+      head.insertAdjacentHTML('afterend',wxStrip({name:day.name,code:dd.daily.weather_code[i],tmax:dd.daily.temperature_2m_max[i],tmin:dd.daily.temperature_2m_min[i],rain:dd.daily.precipitation_probability_max[i]}));
+    });
+  }catch(e){ /* 靜默失敗，不影響行程顯示 */ }
+}
+loadWeather();
 </script>
 </body>
 </html>
