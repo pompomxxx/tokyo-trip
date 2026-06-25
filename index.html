@@ -811,6 +811,9 @@ async function syncToGist(){
     clone.querySelectorAll('.weather-strip,.drag-handle,.del-ev,.add-ev-btn,.del-item,.add-item-row,.add-cat-btn').forEach(el=>el.remove());
     clone.querySelectorAll('[contenteditable]').forEach(el=>el.removeAttribute('contenteditable'));
     const cbody=clone.querySelector('body'); if(cbody) cbody.classList.remove('editing');
+    const s=clone.querySelector('#sync-status'); if(s){ s.style.display='none'; s.textContent=''; }
+    const sb=clone.querySelector('#btn-sync'); if(sb) sb.removeAttribute('disabled');
+    const et=clone.querySelector('#btn-edit-toggle'); if(et) et.textContent='✏️ 編輯行程';
     const html='<!DOCTYPE html>\n'+clone.outerHTML;
     statusShow('⏳ 同步中…（連線 GitHub）','#777');
     const apiBase=`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${REPO_PATH}`;
